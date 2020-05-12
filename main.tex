@@ -1,0 +1,640 @@
+\documentclass[10pt]{article}
+
+\usepackage{paper}
+
+\setpapertitle{Finding Concentration Bounds for K-Means++}
+\setauthor{Ritesh Baldva}{rb3447}
+\addauthor{Gurpreet Singh}{gs3056}
+
+\newcommand{\opt}[1]{#1_{\text{OPT}}}
+
+\begin{document}
+\makeheader%
+
+\begin{abstract}
+    Lloyd's algorithm~\citep{kmeans}, commonly known as the k-means algorithm, provides
+    an intuitive sub-optimal algorithmic solution to the data clustering problem.
+    The k-means algorithm has a number of variants and applications in different domains
+    and is the most popular clustering algorithm in Machine Learning. Despite its
+    simplicity and popularity, there is lack of information theoretic bounds on the
+    clustering solutions. It is affected by initialization strategies, along with the
+    contuinity and unboundedness of the loss function. In this survey, we peruse some
+    recent strategies which try to find theoretic bounds for the k-means solution based 
+    on assumptions on the underlying data distribution or modified initialization
+    strategies.
+\end{abstract}
+
+\begin{psection}{Introduction}
+
+    The data clustering problem that we deal with can be defined as minimizing the cost
+    which is defined for a set of $n$ points in $\bR^d$ as the sum of squared l2 norm
+    distance between each point and the closest center out of $k$ chosen centers. This,
+    in general, is NP-hard.~\cite{kmeans} proposed a local search solution which begins
+    with $k$ arbitrary centers and iteratively improves the clustering to greedily
+    minimize the cost. The simplicity and the ability to parallelize the
+    algorithm~\citep{parallel-kmeans} makes it one of the most popular clustering
+    algorithms. However, due to the arbitrary initialization procedure and the poperties
+    of the loss function, the algorithm suffers from unbounded cost estimates.
+
+    In section 3, we explore some uniform deviation bounds derived for the k-means
+    algorithm. The strategies discussed assume different conditions for the underlying
+    probability distributions.
+
+    The k-means++~\citep{kmeanspp} algorithm affords a well designed initialization
+    strategy which helps us bound the expected cost within $\bigO{\log k}$ factor of the
+    optimal cost. Despite the bounded results on expectation, the k-means++ strategy has
+    some caveats that are highlighed in Section 4 along with some recent advances which
+    try to tackle these issues. We also state the theoretical guarantees achieved by
+    some of the recent seeding based strategies for k-means initialization without
+    proof.
+
+\end{psection}
+
+\begin{psection}{Background and Notation}
+
+    Define $d(\vx, C) = \min_{\vc \in C} \norm{\vc - \vx}_2$
+
+\end{psection}
+
+\begin{psection}{Uniform Deviation Bounds}
+    % Moment-based Uniform Deviation Bounds fork-means and Friends
+    If we use the Lloyd's algorithm for identifying the k-centres by approximating the
+    k-means cost function, one problem that needs to be addressed is how well do the
+    selected centers fit the underlying the data distribution. This problem refers to
+    calculating to bounding the following quantity,
+    \begin{equation}
+        \label{moment:eq1}
+        \left\vert \frac{1}{m} \sum_{j=1}^m \min_i \Vert x_j - p_i \Vert^2_2 -\int \min_i \Vert x - p_i \Vert^2_2 d\rho(x)   \right\vert  
+    \end{equation}
+    In the above equation~\ref{moment:eq1}, $\rho$ refers to the probability
+    distribution of the data and $\set{p_i}_{i=1}^{k}$ refer to the set of selected
+    centers. The paper establishes the above deviation to follow $\cO (m^{-1/2})$, where
+    $m$ is the number of samples from the distribution data. \\ After running the
+    algorithm, we obtain the cost on the samples, but evaluating the cost according to
+    the probability measure can still make it unbounded. The idea is that the generally
+    the samples will exist from areas of high density and the term $\int \norm{x -
+    p}^2_2 d\rho(x)$ will be negligibly small for points which are far away from the
+    centers, because of low density at those points. Thus, we can create balls around
+    such centers and be able to move around within the balls to chose a new center and
+    the effect of that new center from points far away will still be of the same order
+    as previously. This can be seen easily with the help of the triangle inequality.
+    Thus we have two tasks, bounding the deviations within the balls and the deviation
+    for points which lie outside the balls.  Let's introduce the notation to follow the
+    lemmas for finally bounding the deviation rates, which is the same as defined in the
+    paper.
+
+    \begin{enumerate}
+        \item A convex differentiable function $f$, which for the hard k-means problem
+            is, $f= \norm{x}^2_2$. Let's also assume that the function is
+            $\alpha$-strongly convex and $\beta$-smooth. Let's also define the related
+            Bregman divergence with respect to $f$, as $B_f(x,y)$. 
+        \item Order-$p$ moment bound $M$ on $\rho$, i.e
+            $\E[\rho]{ \norm{X - \E[\rho]{X}}^l} \leq M \,\, \forall l \in [1,p]$
+        \item $P$ represents the set of centers and the corresponding cost of a single
+            point $x$, with respect to $P$ and $f$, as $\phi_f(x; P) = \min_{p \in P}
+            B_f(x,p)$. Then, $k$-means cost of a set of points with respect to a
+            probability measure $\nu$ is $\E[\nu]{\phi_f(X; P)}$.  
+    \end{enumerate}
+
+    We first start with bounding the deviations between the $k$-th
+    moments of the true measure and the empirical measure. This is done by first
+    establishing a ball in the euclidean space which satisfies the following
+    [Lemma A.6] in \citep{telgarsky2013moment}, where $\tau$ is a moment map,  
+    \begin{equation}
+        \label{moment:eq2}
+        B = \set{x \in \cX : \norm{\tau(X)} \leq \para{M/\epsilon}^{1/(p - k)}}
+    \end{equation}
+
+    This results in the following bound on the moment on the true measure $\rho$,
+    \begin{equation}
+        \label{moment:eq3}
+        \int_{B} \norm{\tau(x)}^k d\rho(x) \leq \epsilon
+    \end{equation}
+
+    The deviations between the $k$-th moments is derived through the Minkowski's
+    inequality [Lemma A.7] in \citep{telgarsky2013moment} and a concentration bound
+    established using bounded moments of order $p$ [Lemma
+    A.3]\cite{telgarsky2013moment},
+    \begin{equation}
+        \label{moment:eq4}
+        \abs{\int_B \norm{\tau(x)}^k d\hat{\rho}(x) - \int_B \norm{\tau(x)}^k d{\rho}(x)} \leq \sqrt{\frac{M' e p'}{2m}}\para{\frac{2}{\delta}}^{1/p'}
+    \end{equation}
+
+    which holds with probability at least $1 - \delta$ over draw of the sample size
+    $m \geq p'/(M'e)$. In the above equation~\ref{moment:eq4}, $p'\geq 1$ and 
+    $M' = 2^{p'}\epsilon$ and the relation holds for the ball with the maximum radius
+    defined among all possible moment orders less than $p$.
+
+    The main result for bounding the deviations in the k-means cost is defined int
+    Theorem 3.2 of \citep{telgarsky2013moment}. The actual idea lies behind breaking the
+    deviation into different terms using triangle inequality. From the complete space,
+    we first reduce down to space (ball) where a decent amount of probability mass is
+    present. Then we concentrate on the centers that are in and around this ball. From
+    here we focus on a particular possible center of a disk that covers this ball. We
+    try to bound the k-mean costs with respect to this ball locally through moment
+    methods and use bracketing to bound the costs when reducing from the whole space to
+    this actual ball. 
+    \begin{align*}
+        \abs{\int \phi_f(x; P) d\rho(x) - \int \phi_f(x; P)d{\rho}(x)}
+        &\leq  \abs{\int \phi_f(x; P) d\rho(x) - \int_B \phi_f(x; P \cap C)d\hat{\rho}(x)} \\
+        &\quad+ \abs{\int_B \phi_f(x; P \cap C) d\rho(x) - \int_B \phi_f(x; Q)d{\rho}(x)} \\
+        &\quad+ \abs{\int_B \phi_f(x; Q) d\rho(x) - \int_B \phi_f(x; Q)d\hat{\rho}(x)} \\
+        &\quad+ \abs{\int_B \phi_f(x; Q) d\hat{\rho}(x) - \int_B \phi_f(x; P \cap C)d\hat{\rho}(x)} \\
+        &\quad+ \abs{\int_B \phi_f(x; P \cap C) d\hat{\rho}(x) - \int \phi_f(x; P )d\hat{\rho}(x)}
+    \end{align*}
+
+    In the above breakdown the ball $B$ represents the ball we concentrate on and $C$
+    represents the region around this ball, which is considered viable to get centers
+    from $P$. Finding the bracketing functions is easy, for the lower bound, it's
+    trivially $0$ and for the upper bound we can split using the triangle inequality
+    around the expected mass. 
+    \begin{align*}
+        l(x) &= 0 \\
+        u(x) &= 4(\beta/2)\norm{x - \E[\rho]{X}}^2_2
+    \end{align*}
+
+    Notice that $u(x)$ can be used as moment function for the equation~\ref{moment:eq4}
+    and with triangle inequality, thus used to bound the fifth term accordingly. We
+    bound the first term with $\epsilon$ itself. For the third term, since $Q$ is a
+    cover of the region surrounding the ball B, we use the following fact that,
+    \begin{equation}
+        \label{moment:eq5}
+        \sup_{x \in B} \abs{\min_{p \in P} B_f(x, p)  - \min_{q\in Q}B_f(x,q)} \leq \epsilon
+    \end{equation}
+    which can be shown using properties of Bregman divergence only to have that, 
+    \begin{equation}
+        \label{moment:eq6}
+        \abs{\int_B \phi_f(x; Q) d\rho(x) - \int_B \phi_f(x; Q)d\hat{\rho}(x)} \leq 4(\beta/2)R_C^2 \sqrt{\frac{1}{2m}\log\left(\frac{2 \abs{\cN}^k}{\delta}\right)}
+    \end{equation}
+
+    Plugging all the above bounds back, we get the bound for the deviation, where the
+    value of $\epsilon$ is then chosen carefully to give the required bound for k-means
+    problem. This results in a bound of the order $O(m^{-1/2 + \min(1/4, 2/p)})$, which
+    results in $O(m^{-1/2})$ when $p \rightarrow \infty$. \\ In a more recent approach,
+    \citet{approx-kmeanspp} show a consistent bound of $\bigO{m^{-1/2}}$. This is
+    achieved by reformulation of the deviation problem from~\ref{moment:eq1}, to a
+    functional form like below, 
+    \begin{equation}
+        \label{moment:eq7}
+        \left\vert \frac{1}{m} \sum_{j=1}^m \min_i \Vert x_j - p_i \Vert^2_2 -\int \min_i \Vert x - p_i \Vert^2_2 d\rho(x)   \right\vert  \leq \frac{\epsilon}{2}\E[\rho]{\phi_f(X; P)} +  \frac{\epsilon}{2} \E[\rho]{\phi_f(X; \E[\rho]{X})}
+    \end{equation}
+
+    The authors claim in the above paper that along with bounding the deviation, the
+    above formulation also allows for scale-invariance and unbounded solution space. The
+    second term helps in controlling the scale-invariance through the variance term and
+    the first term helps in generalising the bound uniformly for all sets of $k$-centers
+    $Q$. The bound on the sample size, in the paper is obtained using in terms of the
+    kurtosis bound on the distribution and a  generalization of VC dimension,
+    psuedo-dimension. 
+\end{psection}
+
+\begin{psection}{Seeding for K-Means}
+
+    The K-means algorithm is extremely sensitive to initialization. Almost all of the
+    techniques which try to improve the convergence of the K-means strategy to a better
+    optima revolve around finding better initialization means. This is known as seeding.
+    In this section, we dicuss some of the earlier seeding strategies as well as the
+    state-of-the-art popular strategies along with any information theoretic bounds they
+    provide.
+
+    In the native k-means algorithm, instead of finding a seeding, the data points are
+    randomly assigned to a cluster and the seeding is chosen by computing the means of
+    each data cluster. An improvement to this and one of the oldes methods is the
+    Forgy Approach~\cite{forgy} where $k$ datapoints are chosen uniformly at random
+    and used the initial seeds. A variant of this is to run the k-means algorithm $R$
+    times each with a random initialization of the cluster means using the Forgy
+    Approach. This is one of the most common approaches of seeding. This strategy helps
+    in selecting a better seeding and somewhat reduces the sensitivity of the
+    initialization, however, does not provide any definite results, nor help us derive a
+    concentration bound on the convergence of the algorithm to a better optima.
+
+    \citet{maxmin} proposed an almost deterministic strategy (Maxmin) to choose the
+    seeds where only the first seed is chosed randomly. The MaxMin strategy is as
+    follows; choose the first point uniformly at random from the dataset. At any
+    timestep, choose a point from the dataset whose minimum distance is the maximum from
+    any of the centroids (hence the name). The MaxMin strategy was shown to perform
+    better than the original seeding strategy, the argument being that this strategy is
+    based on inter- cluster distance optimization.~\cite{ka} proposed a completely
+    deterministic variant of the MaxMin strategy which selects the seeds based on
+    datapoints which improve the loss by the most amount.
+
+    There are many researches which conduct an empirical comparison of the
+    aforementioned approaches~cite{pena, celebi, helan, douglas}.~\cite{sami} provides
+    a nice review on the different surveys and comparasons on some seeding strategies
+    for k-means algorithms. None of the above methods, however, afford any theoretical
+    guarantees on the learnt clustering when using Lloyd's Algorithm.
+
+    Due to the arbitrary initialization of the cluster means, it is not possible to
+    bound the loss even in expectation. In order to circumvent this,~\cite{kmeanspp}
+    proposed an initialization strategy, called the k-means++ strategy, which allows
+    us to bound the loss of the k-means algorithm in expectation. The k-means++
+    initialization strategy is presented in algorithm \hyperlink{algo:1}{1}. This is
+    one of the most common seeding strategies used for k-means. Most of the newly
+    proposed strategies are based on k-means++. Before discussing these attempts, we
+    dig a little deeper into the k-means++ strategy in the following text.
+    
+    \begin{psubsection}{K-Means++ Seeding}
+    
+        The idea of the k-means++ strategy is to sample the means as far away from each
+        other as possible. This maximizes the coverage of the data points and, hence,
+        bounds the cost of the clustering.
+    
+        \begin{algo}{K-Means++}
+            \ditem{Input:} Data samples $Q = \set{\vx_1, \vx_2 \dots \vx_n} \sim P^n$ \\
+            \ditem{Output:} Cluster means $C = \set{\vc_1, \vc_2 \dots \vc_k} \sim \bR^k$
+            \\[1em]
+            \ditem{Procedure:}
+            \begin{enumerate}
+                \item Uniformly at random pick $\vc_1$ from $\vx_1, \vx_2 \dots \vx_n$.
+                \item Let $C = \set{\vc_1}$.
+                \item For $i = 2 \dots k$, do
+                    \begin{enumerate}
+                        \item Sample a new center $\vc_i$ using $D^2$ weighting from the
+                            dataset. $D^2$ weighting assigns a probability to each sample as
+                            follows
+                            \begin{align*}
+                                \prob{C_i = \vx \pipe C} \eq \begin{cases}
+                                    \frac{1}{Z} d^2(\vx, C) & \mt{if} \exists j\ \mt{s.t.} \vx_j = \vx \\
+                                    0 & \mt{else}
+                                \end{cases}
+                            \end{align*}
+                            where $Z$ is the normalization constant.
+                        \item Set $C = C \cup \set{\vc_j}$
+                    \end{enumerate}
+                \item Return $C$ as the set of required $k$ centers.
+            \end{enumerate}
+        \end{algo}
+    
+        The bound on the expectation as presented in the original paper is given in
+        Theorem~\ref{thm:kmeanspp-bound}
+    
+        \begin{theorem}[\cite{kmeanspp}]\label{thm:kmeanspp-bound}
+            For any set of data points $Q = \set{\vx_1, \vx_2 \dots \vx_n}$ in $\bR^d$,
+            we can find a clusering $C$ using the k-means++ strategy such that in
+            expecation, the cost of the clustering is bounded within $\bigO{\log k}$
+            factor of the optimal cost. More specifically, we have
+            \begin{align*}
+                \E[C]{\phi_C} \qle 8 \para{\log k + 2} \opt{phi}
+            \end{align*}
+        \end{theorem}
+    
+        Note that since k-means always only reduces the cost, if the initial clusters
+        afford a bound on the expected cost, then the cost for the final clusters found
+        with the k-means algorithm will also satisfy the same bound.
+    
+        Without going into the details of the proof, we present the main lemmas used to
+        derive the bound in expecation and some interpretations behind them.
+    
+        \begin{lemma}
+            Let $A$ be a cluster from optimal clustering $\opt{\cC}$ of the samples $Q$,
+            and let $\cC$ be a clustering with one center chosen uniformly at random
+            from $A$. Then, we have
+            \begin{align*}
+                \E{\phi_\cC(A)} \eq 2\ \opt{\phi}(A)
+            \end{align*}
+        \end{lemma}
+    
+        This lemma entails that for any set of points, a point chosen at random will
+        always have bounded optimal cost in expctation. This establishes the base case
+        of the k-means++ algorithm for single point clusters.
+    
+        \begin{lemma}
+            Let $A$ be an arbirary cluster from the optimal clustering $\opt{\cC}$ and
+            $\cC$ be some arbitrary clustering. If we add a random center to $\cC$ from
+            $A$ sampled using $D^2$ weighting, then we have
+            \begin{align*}
+                \E{\phi(A)} \qle 8\ \opt{\phi}(A)
+            \end{align*}
+        \end{lemma}
+    
+        The above two lemmas combined tell us that if we pick a single point from a
+        cluster either using $D^2$ weighting or uniformly at random, the expected loss
+        is bounded by a factor of 8 from the optimal cost for that cluster. This
+        essentially means that if we can pick one point out of each cluster, our
+        expected cost will be only a constant times the optimal cost. However, this is
+        obviously not always possible because we do not know the actual clustering and
+        therefore ensuring each cluster has a representative in the initial means is not
+        possible. The third lemma allows us to bridge this gap and provides a way for us
+        to prove Theorem~\ref{thm:kmeanspp-bound}.
+    
+        \begin{lemma}
+            Let $\cC$ be any arbitrary clustering we have chosen. Choose $u > 0$
+            clusters from $\opt{\cC}$ that do not have any representative in the
+            clustering $\cC$. Let $Q_u$ represent the set of points in these $u$
+            clusters. Also let $Q_c = Q \setminus Q_u$. Now suppose we add $t \le u$
+            random centers to $\cC$ sampled from $Q$ using $D^2$-weighting. Let $\cC'$
+            denote the resulting clustering and let $\phi'$ denote the corresponding
+            potential. Then $\E{\phi'}$ is bounded as follows
+            \begin{align*}
+                \E{\phi'} \leq (\phi(\cX_c) + 8\,\opt{\phi}(\cX_u)) \cdot (1 + H_t) + \frac{u - t}{u} \phi(\cX_u)
+            \end{align*}
+            where $H_t$ denotes the harmonic sum, \ie\ $H_t = \sum_{i=1}^t \frac{1}{i}$.
+        \end{lemma}
+    
+        The intuition behind the above lemma is as follows. As discussed earlier, we
+        want to choose one point for each cluster. The probability of choosing an
+        uncovered cluster $A$ in the above setting would be $\phi_\cC{A} / \phi_\cC$. If
+        the cluster $A$ is not covered, we would expect it's cost to be high, and
+        therefore the probability of choosing a point from $A$ would be high as well.
+        Moreover, if there is a point chosen from $A$, then the cost would be low and
+        therefore there is lower probability of another point being chosen from $A$ with
+        $D^2$ weighting.
+    
+        This means that by using $D^2$ weighting, we are promoting cluster diversity
+        and, therefore, trying to cover as many clusters we can. This is also the idea
+        behind the proof the above lemma, and subsequently contributes to the intuition
+        and the proof of the K-means++ strategy as a whole.
+
+        \citet{stream-kmeanspp} further extend the k-means++ strategy to build sampling
+        strategies which reduce the original dataset to size $\bigO{k \log k}$ and
+        affords $\bigO{1}$ approximation guarantees with a constant probability. 
+        \citet{adaptive-kmeanspp} show that it is possible with an arbitrarily high
+        probability a constant approximation guarantee based on the same $D^2$ sampling
+        strategy. Both the approaches build on the $D^2$ sampling by using a divide and
+        conquer approach to build bi-criteria approximation for the k-means problem.
+
+        \citet{stream-kmeanspp} develop an alternate strategy called k-means\# which
+        samples each centroid $3 \cdot \log k$ times and feeds these samples to the
+        k-means++ algorithm to generate the final clusters. This divide and conquer
+        strategy is a single pass streaming algorithm which affords the same order
+        guarantees as k-means++.
+
+        Even though k-means++ has been one of the most popular techniques for seeding,
+        it is not devoid of problems. \citet{sami} suggests that k-means++ generally
+        works well but is more suitable for small to mid-sized datasets. One of the
+        reasons to not choose this strategy for large datasets is that each iteration
+        of the seeding strategy requires $\bigO{nd}$ time. This means that we have to
+        make $k$ passes of $\bigO{nd}$ time.
+
+        One might wonder that each pass of the Lloyd's algortihm also takes $\bigO{nd}$
+        time, however, it is possible to parallelize the K-means
+        algorithm~\cite{parallel-kmeans}. K-Means++, on the other hand, cannot be
+        parallelized as each iteration depends on the sample from the previous
+        iteration. There have been several attempts to remedy
+        this~\cite{scalable-kmeanspp, approx-kmeanspp, dist-kmeanspp, fast-kmeanspp}
+        which we explore in the next subsection.
+    
+    \end{psubsection}
+
+    \begin{psubsection}{Fast and Scalable Seeding with K-Means++}
+    
+        As pointed out in the previous subsection, k-means++ faces the issue of
+        parallelization. \citet{scalable-kmeanspp} propose a sampling solution which
+        resembles the approach suggested by \citet{stream-kmeanspp}. This sampling
+        strategy proposed provides an additive approximation error along with an
+        $\bigO{\log k}$ approximation factor in expectation.
+
+        The idea behind the algorithm (given in algorithm box \hyperlink{algo:2}{2}) is
+        to sample $k$ points in each iteration of the $D^2$ sampling strategy and do
+        this for $\log n$ iterations. Over these generated samples, k-means++ is
+        run and the cluster centers that are output are used as the initial seeds for
+        the k-means algorithm.
+
+        \begin{algo}[0.9\textwidth]{K-Means$\Vert$}
+        
+            \begin{description}
+                \item[Input:] Data samples $Q = \set{\vx_1, \vx_2 \dots \vx_n} \sim P^n$
+                \item[Output:] Cluster means
+                    $C = \set{\vc_1, \vc_2 \dots \vc_k} \sim \bR^k$
+
+                \item[Procedure:]
+                    \begin{enumerate}
+                        \item Uniformly at random, sample $\vc$ from $Q$
+                        \item Initialize $C = \set{\vc}$ and corresponding clustering $\cC$
+                        \item Let $\psi = \phi_\cC(Q)$
+                        \item Do $\bigO{\log \psi}$ times
+                            \begin{itemize}
+                                \item Sample $\vc$ from $Q$ independently with
+                                    probability
+                                    \begin{align*}
+                                        \prob{\vc = \vx \pipe C} \eq \begin{cases}
+                                            \frac{1}{Z} d^2(\vx, C) & \mt{if} \exists j\ \mt{s.t.} \vx_j = \vc \\
+                                            0 & \mt{else}
+                                        \end{cases}
+                                    \end{align*}
+                                    for so weighting factor $l$
+                                \item $C = C \cup C'$
+                            \end{itemize}
+                        \item For $\vc \in C$, set the weight of $\vc$ be the number of
+                            points in $Q$ closer to $\vc$ than any other point in $C$
+                        \item Recluster the weighted points in $C$ in to $k$ clusters
+                            using k-means++ and return the obtained centers.
+                    \end{enumerate}
+            \end{description}
+        
+        \end{algo}
+
+        \begin{theorem}[\citep{scalable-kmeanspp}]%
+            \label{thm:scalable-bound}
+            Let $\alpha = \texp{- \para{1 - \exp{-l/(2k)}}}$. If $C$ is the set of
+            centers at the beginning of an iteration of algorithm hyperlink{algo:2}{2}
+            and $C'$ is the set of centers added, then
+            \begin{align*}
+                \E{\phi_{C \cup C'}}
+                &\qle 8 \opt{\phi} + \frac{1 + \alpha}{2} \phi_C
+            \end{align*}
+        \end{theorem}
+
+        The above theorem is the main result shown by \citet{scalable-kmeanspp}. This
+        algorithm allowed the runtime of the initialization strategy go down simply
+        because of parallelization trading off with the computation cost of the
+        process. The authors also note that the algorithm works well, empirically, even
+        if the inner loop is run only a constant number of times.  Moreover, the
+        convergence of the actual Lloyd's algorithm is shown to improve with
+        k-means$\Vert$ seeding~\cite{scalable-kmeanspp}.
+        
+        \citet{dist-kmeanspp} argued that the bound in Theorem~cite{thm:scalable} does
+        not scale with $l$ as the scaling factor can be at least $1/2$. In their work,
+        \citet{dist-kmeanspp} improve the theoretical bound for k-means$\vert$ which
+        depends on the variance of the underlying probability distribution. This bound
+        is stated in Theorem~\ref{thm:dist}.
+
+        \begin{theorem}[\citep{dist-kmeanspp}]%
+            \label{thm:dist}
+            Suppose if the points generated by the seeding strategy in algorithm
+            \hyperlink{algo:2}{2} is represented as $C$. A clustering of $Q$ based on
+            the centroids obtained from clustering $C$, say $\cC$ is at most a constant 
+            factor from the optimal potential of the clustering of the original data 
+            points $Q$ along with an additiver term that depends on the variance of the
+            underlying probability distribution. More specifically, we have
+            \begin{align*}
+                \E{\phi_\cC(Q)}
+                &\qle 2 \para{\frac{k}{el}}^t \var{Q} + 26 \opt{\phi}
+            \end{align*}
+        \end{theorem}
+
+        According to Theorem~\ref{thm:dist}, using k-means++ on the subsampled points
+        gives a $\log k$ factor approximation of the optimal potential with an additive
+        error as showing in the equation.
+
+        An alternate work~\cite{approx-kmeanspp} tried to replace $D^2$ sampling with an
+        MCMC approximation (K-MC\textsuperscript{2}) which allows the runs to be
+        parallel and requires fewer iterations than k-means++. The proposal distribution
+        for the said MCMC is a uniform distribution over the sample points, therefore
+        assigning $1/n$ to each data point. The acceptance probability for the chain is
+        given as follows
+        \begin{align*}
+            \prob{\tfunc{accept}{x} \pipe x_{j - 1}}
+                \eq \min \set{\frac{d^2(x, C)}{d^2(x_{j - 1}, C)}, 1}
+        \end{align*}
+
+        \citet{approx-kmeanspp} argue that the total variation distance between the
+        MCMC sample distribution and the actual distribution decreases exponentially
+        with the chain length, say $m$. With this argument, the authors prove a
+        convergence bound as shown in Theorem~\ref{thm:approx}.
+
+        \begin{theorem}[\citep{approx-kmeanspp}]
+            Let $k > 0$ and $0 < \eps < 1$. Let $p++(C)$ be the probability of sampling
+            a seeding $C$ using k-means++ and $p_{meme}(C)$ be the probability of
+            seeding $C$ using K-MC\textsuperscript{2}. Then, we have
+            \begin{align*}
+                \norm{p_{meme} - p_{++}}_{TV} \qle \eps
+            \end{align*}
+            for a chain length $\bigO{\gamma' \log \frac{k}{\eps}}$ where
+            \begin{align*}
+                \gamma' \eq \max_{C \subset Q, \norm{C} \qle k} \max_{\vx \in Q} \frac{d^2(x, C)}{\sum_{\vx' \in Q} d^2(\vx', C')}
+            \end{align*}
+        \end{theorem}
+
+        The above theorem proves that the samples generated using the
+        K-MC\textsuperscript{2} are, in expectation, are close to the samples generated
+        using k-means++. Therefore, we can achieve results close to k-means++ without 
+        each iteration spending a complete pass over the whole dataset.
+
+        \citet{fast-kmeanspp} extend these results to result some of the implicit
+        assumptions made by K-MC\textsuperscript{2}. The authors argue that
+        K-MC\textsuperscript{2} does not work well with heavy tailed distributions.
+        Moreover, they refine the theoretical analysis to rid of theses assumptions and
+        allow the algorithm to afford the same results up to a constant factor.
+
+        There are countless other approaches which all offer strategies which afford
+        certain kinds of convergence bounds. There hasn't been a successful research
+        on provably converging to the optimal point up to a constant factor. We try
+        to show a simple bound based on convergence inequalities for depenedent
+        random variables for the k-means++ strategy in the next and concluding
+        subsection.
+    
+    \end{psubsection}
+
+    \begin{psubsection}{Deriving a Trivial Bound for K-Means++}
+        
+        Our objective is to derive a concentration bound on the initial cost of the
+        following form.
+
+        Suppose the cost of a clustering $C$ achieved by the seeding strategy given in
+        k-means++ is represented as $\phi_C$. We want to show that with probability greater
+        than $1 - \delta$, we have
+        \begin{align*}
+            \phi_C \qle \E{\phi_C} + \eps
+        \end{align*}
+
+        We have seen such concentration bounds often in information theory. However, most
+        concentration inequalities assume the random variables over which we are computing
+        the expectation to be independent. This is not satisfied in our case, since the
+        sampling of the centers is done sequentially and the probability distribution
+        depends on each of the centers sampled previously.
+
+        In order to overcome this, we plan to use concentration bounds which do not assume
+        independence between random variables. There have been a series of forays into
+        deriving such concentration bounds \citep{marton1, marton2, samson, kontor, paulin}
+        all along similar lines. A general result derived \citep{kontor} claims the
+        following concentration bound.
+
+        \begin{theorem}
+            Let $X = \set{X_i}_{i = 1}^n$ be a set of dependent random variables all taking
+            values in a countable space $\cS$ such that the set of random variables is a
+            coordinate projection over the probability space $\para{\cS^n, \cF, \bP}$ where
+            $\cF$ is the powerset of $\cS^n$ and $\bP$ is a probability measure on
+            $\para{\cS^n, \cF}$. For an $l$-Lipschitz function $\varphi : \cS^n \ra \bR$
+            (with respect to hamming distance), then for any $\eps > 0$, we have
+            \begin{align*}
+                \bP\{\abs{\varphi - \E{\varphi}} \ge \eps\} \qle 2\ \texp{-\frac{\eps^2}{2 n l^2 \norm{\Delta_n}_\infty^2}}
+            \end{align*}
+            where $\Delta$ is a matrix whose $i,j$ element is defined as follows
+            \begin{align*}
+                {(\Delta_n)}_{i, j} \eq \begin{cases}
+                    1 & \mt{if} i = j \\
+                    \eta_{i, j} & \mt{if} i < j \\
+                    0 & \mt{else}
+                \end{cases}
+            \end{align*}
+            $\eta_{i, j}$ is defined for all $1 \le i < j \le n$  as follows
+            \begin{align*}
+                \eta_{i, j} \eq \underset{\prob{X_{1:i} = \vy_{1:i-1}\bar{w}} > 0}{\underset{\prob{X_{1:i} = \vy_{1:i-1}w} > 0}{\max_{\vx_{1:i-1}, w, \bar{w}}}} \norm{\prob{X_{j:n} \pipe \vx_{1:i-1} w} - \prob{X_{j:n} \pipe \vx_{1:i-1} \bar{w}}}_{\text{TV}}
+            \end{align*}
+            where $\norm{\cdot}_{\text{TV}}$ signifies the total variation between two
+            probability distributions.
+        \end{theorem}
+
+        Suppose instead of generating $k$ centers using the k-means++ strategy, we
+        generate $m$ centers sequentially considering only the previous $k-1$
+        centers for D\sups{2}-weighting. Let these set of centers be denoted as
+        $\set{\mu_i}_{i=1}^m$. Then, define the average cost $\overline{\phi}$ as
+        follows
+        \begin{align}
+            \label{eq:phi-bar}
+            \overline{\phi} \eq \frac{1}{m-k+1} \sum_{i=1}^{m-k+1} \phi_{\mu_{i:i+k-1}}
+        \end{align}
+
+        Note that if we choose the minimum over each quantity in the RHS of
+        equation~\ref{eq:phi-bar}, then that would be a lower bound on
+        $\overline{\phi}$. Therefore, bounding $\overline{\phi}$ helps us bound the
+        cost for one set of centers.
+
+        The interesting thing about this is that in expectaion, the previous bound
+        for k-means++ still holds. For the sake of brevity, we exclude the proof of
+        this from this report and simply state it as a lemma.
+        \begin{lemma}
+            If we sample $m$ centers using the k-means++ strategy, then we have
+            \begin{align*}
+                \E{\overline{\phi}} \qle 8 \para{\log k + 2} \opt{\phi}
+            \end{align*}
+            where $\overline{\phi}$ is as defined in equation~\ref{eq:phi-bar}.
+        \end{lemma}
+
+        Note that the given series is a Markov chain with a memory of $k-1$ \ie\
+        each timestep depends on the previous $k-1$ timesteps. Example 2.15
+        from~\cite{paulin} discusses a concentration bound for exactly such an
+        example and derives a bound as follows.
+
+        Supppose we have a function $f$ that satisfies the bounded differences
+        property with constant $c$ and a set of random variables $\set{X_i}_{i=1}^m$
+        which follow a markov chain with memory $k$, then
+        \begin{align*}
+            \prob{f(\vX) - \E{f(\vX)} > \eps} \qle \texp{-\frac{\eps^2}{4kmc^2}}
+        \end{align*}
+
+        Now the function $\overline{\phi}$ satisfies the bounded differences
+        property with $c = n \cdot D^2$ where $D$ is the diameter of the data points
+        \ie\ the maximum euclidian distance between any two data points. Using this,
+        we can write the following theorem.
+
+        \begin{theorem}%
+            \label{thm:approx}
+            If we sample $m$ centers using the k-means++ strategy with each sample
+            using the previous $k-1$ centers for D\sups{2}-weighting, we can say
+            that with probability at least $1 - \delta$,
+            \begin{align*}
+                \overline{\phi} \qle \E{\overline{\phi}} + 2 \sqrt{(k - 1) \log{\frac{1}{\delta}}} \frac{n \cdot D^2}{\sqrt{m - k + 1}}
+            \end{align*}
+            where $\overline{\phi}$ is defined as in equation~\ref{eq:phi-bar}.
+        \end{theorem}
+
+        This bound, however, is trivial. The reason is that if $m = \Om{k}$, then
+        the error term is of the order of $n \cdot D^2$, which is the upper bound of
+        the cost and is, therefore, trivial. If, however, we choose $m = \Om{n^2}$,
+        then we remove the dependency on $n$. This, however, means that the sampling
+        will be of order $\bigO{kdn^3}$ which is large for even a moderately sized
+        dataset. Even if somehow can sample this many centers, the bound could still
+        be trivial if the diameter of each cluster is small but the clusters
+        themselves are far apart. Therefore, such a bound does not help us bound the
+        cost.
+
+    \end{psubsection}
+
+\end{psection}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
