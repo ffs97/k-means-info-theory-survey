@@ -2,9 +2,8 @@
 
 \usepackage{paper}
 
-\setpapertitle{Finding Concentration Bounds for K-Means++}
-\setauthor{Ritesh Baldva}{rb3447}
-\addauthor{Gurpreet Singh}{gs3056}
+\setpapertitle{A Survey on Information Theoretic Bounds for the K-Means Algorithm}
+\addauthor{Ritesh Baldva}{rb3447}
 
 \newcommand{\opt}[1]{#1_{\text{OPT}}}
 
@@ -50,11 +49,6 @@
 
 \end{psection}
 
-\begin{psection}{Background and Notation}
-
-    Define $d(\vx, C) = \min_{\vc \in C} \norm{\vc - \vx}_2$
-
-\end{psection}
 
 \begin{psection}{Uniform Deviation Bounds}
     % Moment-based Uniform Deviation Bounds fork-means and Friends
@@ -483,7 +477,8 @@
         with the chain length, say $m$. With this argument, the authors prove a
         convergence bound as shown in Theorem~\ref{thm:approx}.
 
-        \begin{theorem}[\citep{approx-kmeanspp}]
+        \begin{theorem}[\citep{approx-kmeanspp}]%
+            \label{thm:approx}
             Let $k > 0$ and $0 < \eps < 1$. Let $p++(C)$ be the probability of sampling
             a seeding $C$ using k-means++ and $p_{meme}(C)$ be the probability of
             seeding $C$ using K-MC\textsuperscript{2}. Then, we have
@@ -610,7 +605,6 @@
         we can write the following theorem.
 
         \begin{theorem}%
-            \label{thm:approx}
             If we sample $m$ centers using the k-means++ strategy with each sample
             using the previous $k-1$ centers for D\sups{2}-weighting, we can say
             that with probability at least $1 - \delta$,
